@@ -1,0 +1,8 @@
+node_modules/
+dist/
+public/mediapipe/
+*.tsbuildinfo
+test-results/
+playwright-report/
+deploy/certs/
+deploy/ca-private/
