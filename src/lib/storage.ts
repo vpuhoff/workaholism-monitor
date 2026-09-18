@@ -1,20 +1,73 @@
 import { openDB } from "idb";
 import type { LogEvent } from "./engine";
+let databasePromise: ReturnType<typeof openDB> | undefined;
 const database = () =>
-  openDB("workaholism-monitor", 1, {
-    upgrade(db) {
-      const store = db.createObjectStore("events", { keyPath: "id" });
-      store.createIndex("date", "date");
+  (databasePromise ??= openDB("workaholism-monitor", 2, {
+    upgrade(db, oldVersion) {
+      if (oldVersion < 1) {
+        const store = db.createObjectStore("events", { keyPath: "id" });
+        store.createIndex("date", "date");
+      }
+      if (oldVersion < 2) db.createObjectStore("outbox", { keyPath: "id" });
     },
-  });
+  }).catch((error) => {
+    databasePromise = undefined;
+    throw error;
+  }));
 export async function readEvents(): Promise<LogEvent[]> {
   return (await database()).getAll("events");
 }
 export async function writeEvent(event: LogEvent) {
-  return (await database()).put("events", event);
+  const db = await database();
+  const tx = db.transaction(["events", "outbox"], "readwrite");
+  await tx.objectStore("events").put(event);
+  await tx.objectStore("outbox").put({ id: event.id });
+  await tx.done;
+  window.dispatchEvent(new Event("monitor-local-event"));
+}
+export async function mergeEvents(events: LogEvent[]) {
+  const db = await database();
+  const tx = db.transaction("events", "readwrite");
+  for (const event of events) await tx.store.put(event);
+  await tx.done;
+  window.dispatchEvent(new Event("monitor-events-changed"));
+}
+export async function queuePendingEvents() {
+  const db = await database();
+  const ids = await db.getAllKeys("events");
+  const tx = db.transaction("outbox", "readwrite");
+  for (const id of ids) await tx.store.put({ id });
+  await tx.done;
+}
+export async function readPendingEvents(): Promise<LogEvent[]> {
+  const db = await database();
+  const ids = await db.getAllKeys("outbox");
+  const events: LogEvent[] = [];
+  const missing: IDBValidKey[] = [];
+  for (const id of ids) {
+    const event = await db.get("events", id);
+    if (event) events.push(event);
+    else missing.push(id);
+  }
+  if (missing.length) {
+    const tx = db.transaction("outbox", "readwrite");
+    for (const id of missing) await tx.store.delete(id);
+    await tx.done;
+  }
+  return events;
+}
+export async function ackPendingEvents(ids: string[]) {
+  const db = await database();
+  const tx = db.transaction("outbox", "readwrite");
+  for (const id of ids) await tx.store.delete(id);
+  await tx.done;
 }
 export async function clearEvents() {
-  return (await database()).clear("events");
+  const db = await database();
+  const tx = db.transaction(["events", "outbox"], "readwrite");
+  await tx.objectStore("events").clear();
+  await tx.objectStore("outbox").clear();
+  await tx.done;
 }
 export interface Settings {
   detection: number;

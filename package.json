@@ -11,7 +11,8 @@
     "assets": "node scripts/prepare-assets.mjs",
     "postinstall": "npm run assets",
     "test:browser": "node tests/browser-smoke.mjs",
-    "format": "prettier --write src scripts tests index.html vite.config.ts tsconfig.json package.json README.md"
+    "format": "prettier --write src scripts tests index.html vite.config.ts tsconfig.json package.json README.md",
+    "test:sync": "node tests/sync-integration.mjs"
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "0.10.32",

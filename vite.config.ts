@@ -2,8 +2,16 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 export default defineConfig({
-  server: { host: "0.0.0.0", allowedHosts: ["virtual-ubuntu"] },
-  preview: { host: "0.0.0.0", allowedHosts: ["virtual-ubuntu"] },
+  server: {
+    host: "0.0.0.0",
+    allowedHosts: ["virtual-ubuntu"],
+    proxy: { "/api": "http://127.0.0.1:3001" },
+  },
+  preview: {
+    host: "0.0.0.0",
+    allowedHosts: ["virtual-ubuntu"],
+    proxy: { "/api": "http://127.0.0.1:3001" },
+  },
   plugins: [
     react(),
     VitePWA({
@@ -31,7 +39,7 @@ export default defineConfig({
       workbox: {
         maximumFileSizeToCacheInBytes: 15 * 1024 * 1024,
         globPatterns: ["**/*.{js,css,html,svg,png,wasm,task}"],
-        navigateFallbackDenylist: [/^\/mediapipe\//],
+        navigateFallbackDenylist: [/^\/mediapipe\//, /^\/api(?:\/|$)/],
       },
     }),
   ],

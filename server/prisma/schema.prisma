@@ -1,0 +1,33 @@
+generator client {
+  provider = "prisma-client"
+  output = "../generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Vault {
+  id        String @id @default(uuid())
+  tokenHash String @unique
+  events    Event[]
+}
+
+model Event {
+  sequence         Int @id @default(autoincrement())
+  vaultId          String
+  vault            Vault @relation(fields: [vaultId], references: [id], onDelete: Cascade)
+  id               String
+  session_id       String
+  date             String
+  state            String
+  time_start       String
+  time_end         String
+  started_at       Float
+  ended_at         Float
+  duration_seconds Float
+  completed        Boolean
+
+  @@unique([vaultId, id])
+  @@index([vaultId, sequence])
+}

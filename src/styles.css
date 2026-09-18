@@ -1097,3 +1097,47 @@ footer button {
     transition: none !important;
   }
 }
+.sync-settings {
+  border-top: 1px solid #2b3326;
+  padding: 18px 0;
+}
+.sync-settings h3 {
+  margin: 0 0 12px;
+}
+.sync-settings p {
+  line-height: 1.6;
+}
+.sync-status {
+  color: #c5f277;
+  font-size: 12px;
+}
+.sync-status small {
+  display: block;
+  color: #929f85;
+  margin-top: 6px;
+}
+.sync-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin: 16px 0;
+}
+.sync-label {
+  display: block;
+  font-size: 12px;
+  color: #b6c1ad;
+  margin: 16px 0 10px;
+}
+.sync-label textarea {
+  display: block;
+  width: 100%;
+  resize: vertical;
+  margin-top: 8px;
+  padding: 10px;
+  background: #080a09;
+  border: 1px solid #3b4931;
+  border-radius: 6px;
+  color: #d1dcc6;
+  font: 13px monospace;
+  overflow-wrap: anywhere;
+}

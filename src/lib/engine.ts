@@ -1,18 +1,7 @@
+import type { LogEvent, Phase } from "../../shared/events";
+export type { LogEvent, Phase };
 export type State =
   "IDLE" | "WORK" | "WORK_PAUSED" | "OVERTIME" | "REST" | "REST_VIOLATION";
-export type Phase = "WORK" | "OVERTIME" | "REST" | "REST_VIOLATION";
-export interface LogEvent {
-  id: string;
-  session_id: string;
-  date: string;
-  state: Phase;
-  time_start: string;
-  time_end: string;
-  started_at: number;
-  ended_at: number;
-  duration_seconds: number;
-  completed: boolean;
-}
 export interface Timing {
   work: number;
   rest: number;

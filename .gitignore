@@ -6,3 +6,5 @@ test-results/
 playwright-report/
 deploy/certs/
 deploy/ca-private/
+server/generated/
+server/*.db*

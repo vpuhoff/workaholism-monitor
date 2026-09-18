@@ -1,0 +1,8 @@
+node_modules
+server/node_modules
+server/generated
+server/*.db*
+.git
+dist
+deploy/certs
+deploy/ca-private

@@ -1,7 +1,37 @@
 name: workaholism-monitor
 
 services:
+  api:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    restart: unless-stopped
+    volumes:
+      - session-logs:/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3001/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
   nginx:
+    depends_on:
+      api:
+        condition: service_healthy
     image: nginx:stable-alpine@sha256:73c75df4075c918f91017fdda46ad81e55e5af77ba3a64ca3d5014bd9244fe7f
     restart: unless-stopped
     ports:
@@ -44,3 +74,6 @@ services:
       options:
         max-size: "5m"
         max-file: "2"
+
+volumes:
+  session-logs:

@@ -30,6 +30,13 @@ import {
   type Settings,
 } from "./lib/storage";
 import { beep, unlockAudio } from "./lib/sound";
+import { SyncSettings } from "./components/SyncSettings";
+import {
+  resetDownloadCursor,
+  startSync,
+  syncNow,
+  withSyncPaused,
+} from "./lib/sync";
 import { Statistics } from "./components/Statistics";
 interface InstallPrompt extends Event {
   prompt: () => Promise<void>;
@@ -156,6 +163,33 @@ export default function App() {
       window.removeEventListener("pagehide", onPageHide);
     };
   }, [engine]);
+  useEffect(() => {
+    let active = true;
+    const refresh = () => {
+      void readEvents()
+        .then((stored) => {
+          if (active)
+            setEvents((current) => [
+              ...new Map(
+                [...current, ...stored].map((e) => [e.id, e]),
+              ).values(),
+            ]);
+        })
+        .catch(() =>
+          setStorageError("Не удалось прочитать локальную историю."),
+        );
+    };
+    window.addEventListener("monitor-events-changed", refresh);
+    const stopSync = startSync();
+    return () => {
+      active = false;
+      stopSync();
+      window.removeEventListener("monitor-events-changed", refresh);
+    };
+  }, []);
+  useEffect(() => {
+    if (page === "stats") void syncNow();
+  }, [page]);
   useEffect(() => {
     const syncFullscreen = () => setFullscreen(!!document.fullscreenElement);
     document.addEventListener("fullscreenchange", syncFullscreen);
@@ -478,8 +512,8 @@ export default function App() {
             <div className="privacy-note">
               <ShieldCheck size={15} />
               <span>
-                Камера видит. Никто другой — нет. Все данные остаются на
-                устройстве.
+                Видео остаётся на устройстве. Синхронизация передаёт только
+                историю сессий и включается отдельно.
               </span>
             </div>
             <Statistics events={events} onOpen={() => setPage("stats")} />
@@ -599,7 +633,7 @@ export default function App() {
               if (e.key !== "Tab") return;
               const elements = Array.from(
                 e.currentTarget.querySelectorAll<HTMLElement>(
-                  "button:not(:disabled), input:not(:disabled), select:not(:disabled), a[href]",
+                  "button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled), a[href]",
                 ),
               );
               const first = elements[0],
@@ -703,10 +737,12 @@ export default function App() {
                     onChange={(e) => setDebug(e.target.checked)}
                   />
                 </label>
+                <SyncSettings />
                 <div className="delete-section">
                   <p className="muted">
-                    История хранится только в этом браузере. Экспорт доступен в
-                    статистике.
+                    Удаляется только история этого браузера. При включённой
+                    синхронизации серверная копия появится снова при следующем
+                    обмене. Экспорт доступен в статистике.
                   </p>
                   <button
                     className="text-button danger-text"
@@ -717,8 +753,11 @@ export default function App() {
                         return;
                       }
                       try {
-                        await clearEvents();
-                        setEvents([]);
+                        await withSyncPaused(async () => {
+                          await clearEvents();
+                          resetDownloadCursor();
+                          setEvents([]);
+                        });
                         setConfirmDelete(false);
                       } catch {
                         setStorageError("Не удалось очистить историю.");
@@ -726,8 +765,8 @@ export default function App() {
                     }}
                   >
                     {confirmDelete
-                      ? "Подтвердить удаление всей истории"
-                      : "Удалить историю"}
+                      ? "Подтвердить удаление локальной истории"
+                      : "Удалить локальную историю"}
                   </button>
                   {confirmDelete && (
                     <button
@@ -779,10 +818,11 @@ export default function App() {
                 <div className="help-item">
                   <ShieldCheck />
                   <div>
-                    <h3>Всё остаётся у вас</h3>
+                    <h3>Камера остаётся на устройстве</h3>
                     <p>
                       Видео не записывается и не отправляется на сервер.
-                      Статистика хранится локально. После первой полной загрузки
+                      Статистика хранится локально и по желанию синхронизируется
+                      по коду в настройках. После первой полной загрузки
                       приложение может работать без интернета. Для установки
                       используйте меню браузера → «На главный экран».
                     </p>

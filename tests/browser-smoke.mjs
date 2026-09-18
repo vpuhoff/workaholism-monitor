@@ -81,7 +81,7 @@ assert.equal(
 );
 await page.evaluate(async () => {
   const db = await new Promise((resolve, reject) => {
-    const req = indexedDB.open("workaholism-monitor", 1);
+    const req = indexedDB.open("workaholism-monitor");
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
