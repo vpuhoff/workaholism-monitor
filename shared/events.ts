@@ -1,4 +1,5 @@
-export type Phase = "WORK" | "OVERTIME" | "REST" | "REST_VIOLATION";
+export type Phase =
+  "WORK" | "OVERTIME" | "REST" | "REST_VIOLATION" | "REST_OVERTIME";
 export interface LogEvent {
   id: string;
   session_id: string;
@@ -43,7 +44,9 @@ export function isLogEvent(value: unknown): value is LogEvent {
     text("date", /^\d{4}-\d{2}-\d{2}$/) &&
     text("time_start", /^\d{2}:\d{2}:\d{2}$/) &&
     text("time_end", /^\d{2}:\d{2}:\d{2}$/) &&
-    ["WORK", "OVERTIME", "REST", "REST_VIOLATION"].includes(String(e.state)) &&
+    ["WORK", "OVERTIME", "REST", "REST_VIOLATION", "REST_OVERTIME"].includes(
+      String(e.state),
+    ) &&
     number("started_at") &&
     number("ended_at") &&
     number("duration_seconds") &&

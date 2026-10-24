@@ -20,7 +20,7 @@ export function Statistics({
       .filter((e) => e.state === state)
       .reduce((a, e) => a + e.duration_seconds, 0);
   const work = sum("WORK"),
-    overtime = sum("OVERTIME");
+    overtime = sum("OVERTIME") + sum("REST_OVERTIME");
   const rests = new Set(
     today
       .filter((e) => e.state === "REST" && e.completed)
@@ -32,7 +32,9 @@ export function Statistics({
     const d = new Date();
     d.setDate(d.getDate() - 6 + i);
     const entries = events.filter(
-      (e) => e.date === dateKey(d) && e.state === "OVERTIME",
+      (e) =>
+        e.date === dateKey(d) &&
+        (e.state === "OVERTIME" || e.state === "REST_OVERTIME"),
     );
     return {
       date: d,
@@ -47,7 +49,11 @@ export function Statistics({
     events.filter((e) => e.state === "REST").map((e) => e.session_id),
   );
   const interrupted = new Set(
-    events.filter((e) => e.state === "REST_VIOLATION").map((e) => e.session_id),
+    events
+      .filter(
+        (e) => e.state === "REST_VIOLATION" || e.state === "REST_OVERTIME",
+      )
+      .map((e) => e.session_id),
   );
   const clean = new Set(
     events
@@ -210,7 +216,9 @@ export function Statistics({
                         .filter(
                           (e) =>
                             e.date === dateKey(d.date) &&
-                            ["WORK", "OVERTIME"].includes(e.state) &&
+                            ["WORK", "OVERTIME", "REST_OVERTIME"].includes(
+                              e.state,
+                            ) &&
                             new Date(e.started_at).getHours() === hour,
                         )
                         .reduce((n, e) => n + e.duration_seconds, 0);

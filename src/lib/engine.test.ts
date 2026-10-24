@@ -77,7 +77,7 @@ describe("monitor state machine", () => {
     expect(events[2].duration_seconds).toBe(5);
     expect(events[2].completed).toBe(true);
   });
-  it("freezes rest while the user is present and resumes without resetting", () => {
+  it("freezes rest during a glance under a minute and resumes without resetting", () => {
     const { engine: e, events, alarm } = setup();
     e.observe(true, 0);
     e.observe(true, 25000);
@@ -85,12 +85,11 @@ describe("monitor state machine", () => {
     e.observe(true, 28000);
     expect(e.state).toBe("REST_VIOLATION");
     expect(e.restMs).toBe(2000);
-    e.observe(true, 34000);
-    expect(alarm).toHaveBeenCalledTimes(2);
-    expect(e.restMs).toBe(2000);
-    e.observe(false, 35000);
+    e.observe(false, 33000);
     expect(e.state).toBe("REST");
-    e.observe(false, 38000);
+    expect(e.restMs).toBe(2000);
+    expect(alarm).toHaveBeenCalledTimes(1);
+    e.observe(false, 36000);
     expect(e.state).toBe("IDLE");
     expect(
       events
@@ -99,7 +98,49 @@ describe("monitor state machine", () => {
     ).toBe(5);
     expect(
       events.find((x) => x.state === "REST_VIOLATION")?.duration_seconds,
-    ).toBe(7);
+    ).toBe(5);
+  });
+  it("counts overtime during rest after a minute at the screen and restarts rest only after a minute away", () => {
+    const { engine: e, events, alarm } = setup();
+    e.observe(true, 0);
+    e.observe(true, 25000);
+    e.observe(false, 26000);
+    e.observe(true, 28000);
+    e.observe(true, 34000);
+    expect(e.state).toBe("REST_VIOLATION");
+    expect(alarm).toHaveBeenCalledTimes(2);
+    e.observe(true, 35000);
+    expect(e.state).toBe("REST_OVERTIME");
+    expect(e.workMs).toBe(27000);
+    expect(e.restMs).toBe(2000);
+    e.observe(true, 36000);
+    expect(e.workMs).toBe(28000);
+    e.observe(false, 37000);
+    expect(e.state).toBe("REST_OVERTIME");
+    expect(e.workMs).toBe(29000);
+    e.observe(true, 42000);
+    expect(e.state).toBe("REST_OVERTIME");
+    expect(e.workMs).toBe(29000);
+    e.observe(false, 43000);
+    e.observe(false, 48999);
+    expect(e.state).toBe("REST_OVERTIME");
+    e.observe(false, 49000);
+    expect(e.state).toBe("REST");
+    expect(e.restMs).toBe(0);
+    expect(
+      events.find((x) => x.state === "REST_OVERTIME")?.duration_seconds,
+    ).toBe(4);
+    e.observe(false, 51000);
+    expect(e.state).toBe("REST");
+    expect(e.restMs).toBe(2000);
+    e.observe(false, 54000);
+    expect(e.state).toBe("IDLE");
+    expect(
+      events
+        .filter((x) => x.state === "REST" && x.completed)
+        .reduce((n, x) => n + x.duration_seconds, 0),
+    ).toBe(5);
+    expect(alarm.mock.calls.length).toBeGreaterThanOrEqual(2);
   });
   it("does not count unobserved background time as work or rest", () => {
     const { engine: e } = setup();

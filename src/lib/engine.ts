@@ -1,7 +1,13 @@
 import type { LogEvent, Phase } from "../../shared/events";
 export type { LogEvent, Phase };
 export type State =
-  "IDLE" | "WORK" | "WORK_PAUSED" | "OVERTIME" | "REST" | "REST_VIOLATION";
+  | "IDLE"
+  | "WORK"
+  | "WORK_PAUSED"
+  | "OVERTIME"
+  | "REST"
+  | "REST_VIOLATION"
+  | "REST_OVERTIME";
 export interface Timing {
   work: number;
   rest: number;
@@ -148,11 +154,38 @@ export class MonitorEngine {
         this.enter("REST_VIOLATION", now);
       }
     } else if (this.state === "REST_VIOLATION") {
-      this.phaseMs += delta;
-      if (!face) {
-        this.log("REST_VIOLATION", now);
+      // A glance under a minute pauses rest. Staying longer becomes overtime.
+      if (this.phaseMs + delta > this.timing.alarm) {
+        const excess = this.phaseMs + delta - this.timing.alarm;
+        this.phaseMs += delta - excess;
+        this.log("REST_VIOLATION", now - excess);
+        this.enter("REST_OVERTIME", now - excess);
+        this.workMs += excess;
+        this.phaseMs = excess;
+        this.absentAt = face ? null : now;
+        if (face && now - this.lastAlarm >= this.timing.alarm) this.alarm(now);
+      } else {
+        this.phaseMs += delta;
+        if (!face) {
+          this.log("REST_VIOLATION", now);
+          this.enter("REST", now);
+        } else if (now - this.lastAlarm >= this.timing.alarm) this.alarm(now);
+      }
+    } else if (this.state === "REST_OVERTIME") {
+      if (!face && this.absentAt === null) this.absentAt = now;
+      const allowed =
+        this.absentAt === null
+          ? delta
+          : Math.max(0, Math.min(delta, this.absentAt - (now - delta)));
+      this.workMs += allowed;
+      this.phaseMs += allowed;
+      if (face) this.absentAt = null;
+      if (this.absentAt !== null && now - this.absentAt >= this.timing.alarm) {
+        this.log("REST_OVERTIME", now);
         this.enter("REST", now);
-      } else if (now - this.lastAlarm >= this.timing.alarm) this.alarm(now);
+        this.restMs = 0;
+      } else if (face && now - this.lastAlarm >= this.timing.alarm)
+        this.alarm(now);
     }
   }
   stop(now: number) {

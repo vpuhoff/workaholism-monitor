@@ -289,7 +289,7 @@ export default function App() {
   }
   const state = engine.state;
   const resting = state === "REST" || state === "REST_VIOLATION";
-  const overtime = state === "OVERTIME";
+  const overtime = state === "OVERTIME" || state === "REST_OVERTIME";
   const elapsed = resting ? engine.restMs : engine.workMs;
   const duration = resting ? DEFAULT_TIMING.rest : DEFAULT_TIMING.work;
   const progress = Math.min(1, elapsed / duration);
@@ -307,14 +307,18 @@ export default function App() {
           OVERTIME: "ПОРА СДЕЛАТЬ ПЕРЕРЫВ",
           REST: "ВРЕМЯ ДЛЯ СЕБЯ",
           REST_VIOLATION: "ОТДЫХ НА ПАУЗЕ",
+          REST_OVERTIME: "ПЕРЕРАБОТКА ВО ВРЕМЯ ОТДЫХА",
         }[state];
-  const headline = resting
-    ? state === "REST_VIOLATION"
-      ? "Экран подождёт."
-      : "Вдохните. Отойдите от экрана."
-    : overtime
-      ? "Вы уже достаточно поработали."
-      : "Меньше переработок. Больше жизни.";
+  const headline =
+    state === "REST_OVERTIME"
+      ? "Отдых прерван. Это снова переработка."
+      : resting
+        ? state === "REST_VIOLATION"
+          ? "Экран подождёт."
+          : "Вдохните. Отойдите от экрана."
+        : overtime
+          ? "Вы уже достаточно поработали."
+          : "Меньше переработок. Больше жизни.";
   return (
     <div className="app" style={{ "--session-red": redness } as CSSProperties}>
       <header className="header">
@@ -384,9 +388,11 @@ export default function App() {
               <span className="eyebrow">РАБОТЕ — ВРЕМЯ. СЕБЕ — ТОЖЕ.</span>
               <h1>{headline}</h1>
               <p>
-                {resting
-                  ? "Пять минут без экрана помогут вернуться с новыми силами."
-                  : "Сосредоточьтесь на важном. О перерывах позаботимся мы."}
+                {state === "REST_OVERTIME"
+                  ? "Минута у экрана во время отдыха снова считается переработкой."
+                  : resting
+                    ? "Пять минут без экрана помогут вернуться с новыми силами."
+                    : "Сосредоточьтесь на важном. О перерывах позаботимся мы."}
               </p>
             </div>
             <section
@@ -442,11 +448,13 @@ export default function App() {
                           ? "Вернитесь, чтобы продолжить"
                           : state === "REST_VIOLATION"
                             ? "Отойдите от экрана, чтобы продолжить отдых"
-                            : resting
-                              ? "осталось до нового фокуса"
-                              : overtime
-                                ? `Переработка +${timer(elapsed - duration)}`
-                                : "из 25 минут спокойной работы"}
+                            : state === "REST_OVERTIME"
+                              ? `Переработка +${timer(elapsed - duration)}. Отойдите на минуту — отдых начнётся заново`
+                              : resting
+                                ? "осталось до нового фокуса"
+                                : overtime
+                                  ? `Переработка +${timer(elapsed - duration)}`
+                                  : "из 25 минут спокойной работы"}
                 </p>
                 <div className="session-progress">
                   <div className="progress-track">
@@ -797,9 +805,11 @@ export default function App() {
                     <h3>5 минут для себя</h3>
                     <p>
                       После 25 минут прозвучит сигнал. Отойдите от экрана, чтобы
-                      начался отдых. Вернётесь раньше — отдых приостановится.
-                      При переработке и нарушении отдыха сигнал повторяется раз
-                      в минуту.
+                      начался отдых. Короткое возвращение ставит отдых на паузу.
+                      Если остаться дольше минуты, время снова считается
+                      переработкой, пока вы не отойдёте хотя бы на минуту —
+                      тогда пять минут отдыха начнутся заново. Сигнал
+                      повторяется раз в минуту.
                     </p>
                   </div>
                 </div>
